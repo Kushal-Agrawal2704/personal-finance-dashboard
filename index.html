@@ -712,6 +712,78 @@
       color: var(--text-secondary);
     }
 
+    /* Custom Chart Tooltip */
+    .chart-tooltip {
+      position: fixed;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      z-index: 1000;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      min-width: 160px;
+    }
+
+    .chart-tooltip .tooltip-arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 0;
+      height: 0;
+      border: 8px solid transparent;
+    }
+
+    .chart-tooltip.right .tooltip-arrow {
+      left: -16px;
+      border-right-color: var(--border-color);
+    }
+
+    .chart-tooltip.right .tooltip-arrow::after {
+      content: '';
+      position: absolute;
+      top: -7px;
+      left: 2px;
+      border: 7px solid transparent;
+      border-right-color: var(--bg-card);
+    }
+
+    .chart-tooltip.left .tooltip-arrow {
+      right: -16px;
+      border-left-color: var(--border-color);
+    }
+
+    .chart-tooltip.left .tooltip-arrow::after {
+      content: '';
+      position: absolute;
+      top: -7px;
+      right: 2px;
+      border: 7px solid transparent;
+      border-left-color: var(--bg-card);
+    }
+
+    .tooltip-label {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      padding-left: 8px;
+      margin-bottom: 6px;
+    }
+
+    .tooltip-value {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--accent-red);
+      margin-bottom: 4px;
+    }
+
+    .tooltip-details {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
     /* Transaction Panel */
     .transaction-panel {
       background: var(--bg-card);
@@ -1890,8 +1962,46 @@
           plugins: {
             legend: { display: false },
             tooltip: {
-              callbacks: {
-                label: ctx => ctx.label + ': ' + formatCurrency(ctx.raw) + ' (' + Math.round(ctx.raw / totalExpense * 100) + '%)'
+              enabled: false,
+              external: function(context) {
+                let tooltipEl = document.getElementById('chartTooltip');
+                if (!tooltipEl) {
+                  tooltipEl = document.createElement('div');
+                  tooltipEl.id = 'chartTooltip';
+                  tooltipEl.innerHTML = '<div class="tooltip-arrow"></div><div class="tooltip-content"></div>';
+                  document.body.appendChild(tooltipEl);
+                }
+                const tooltipModel = context.tooltip;
+                if (tooltipModel.opacity === 0) {
+                  tooltipEl.style.opacity = 0;
+                  return;
+                }
+                if (tooltipModel.body) {
+                  const dataIndex = tooltipModel.dataPoints[0].dataIndex;
+                  const label = top10[dataIndex][0];
+                  const value = top10[dataIndex][1].total;
+                  const count = top10[dataIndex][1].count;
+                  const pct = Math.round(value / totalExpense * 100);
+                  const color = colors[dataIndex];
+                  tooltipEl.querySelector('.tooltip-content').innerHTML =
+                    '<div class="tooltip-label" style="border-left: 4px solid ' + color + '">' + label + '</div>' +
+                    '<div class="tooltip-value">' + formatCurrency(value) + '</div>' +
+                    '<div class="tooltip-details">' + pct + '% • ' + count + ' transactions</div>';
+                }
+                const chartRect = context.chart.canvas.getBoundingClientRect();
+                const chartCenterX = chartRect.left + chartRect.width / 2;
+                const chartCenterY = chartRect.top + chartRect.height / 2;
+                const tooltipX = chartRect.left + tooltipModel.caretX;
+                const isRightSide = tooltipX > chartCenterX;
+                tooltipEl.className = isRightSide ? 'chart-tooltip right' : 'chart-tooltip left';
+                tooltipEl.querySelector('.tooltip-arrow').style.top = '50%';
+                if (isRightSide) {
+                  tooltipEl.style.left = (chartRect.right + 15) + 'px';
+                } else {
+                  tooltipEl.style.left = (chartRect.left - tooltipEl.offsetWidth - 15) + 'px';
+                }
+                tooltipEl.style.top = (chartRect.top + tooltipModel.caretY - tooltipEl.offsetHeight / 2) + 'px';
+                tooltipEl.style.opacity = 1;
               }
             },
             datalabels: {
