@@ -1525,10 +1525,14 @@
           <option value="monthly">Monthly View</option>
           <option value="yearly">Yearly View</option>
         </select>
-        <select id="trendCategory" onchange="updateTrendChart()">
+        <select id="trendCategoryType" onchange="updateTrendChart()">
           <option value="all">All Categories</option>
           <option value="fixed">Fixed Commitments Only</option>
           <option value="other">Other Expenses Only</option>
+        </select>
+        <select id="trendCategory" onchange="updateTrendChart()">
+          <option value="all">All Expense Types</option>
+          <!-- Will be populated dynamically -->
         </select>
       </div>
     </div>
@@ -2340,8 +2344,22 @@
     // Trend Chart
     let trendChart = null;
 
+    function populateTrendCategoryDropdown() {
+      const select = document.getElementById('trendCategory');
+      const categories = [...new Set(transactions.filter(t => t.type === 'Exp.').map(t => t.category))].sort();
+
+      select.innerHTML = '<option value="all">All Expense Types</option>';
+      categories.forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat;
+        opt.textContent = cat;
+        select.appendChild(opt);
+      });
+    }
+
     function updateTrendChart() {
       const viewType = document.getElementById('trendViewType').value;
+      const categoryTypeFilter = document.getElementById('trendCategoryType').value;
       const categoryFilter = document.getElementById('trendCategory').value;
 
       // Get all expense transactions (exclude Feb 2024 - incomplete month)
@@ -2353,11 +2371,16 @@
         return true;
       });
 
-      // Apply category filter
-      if (categoryFilter === 'fixed') {
+      // Apply category type filter (fixed/other)
+      if (categoryTypeFilter === 'fixed') {
         expenseData = expenseData.filter(t => t.isFixed);
-      } else if (categoryFilter === 'other') {
+      } else if (categoryTypeFilter === 'other') {
         expenseData = expenseData.filter(t => !t.isFixed);
+      }
+
+      // Apply specific category filter
+      if (categoryFilter !== 'all') {
+        expenseData = expenseData.filter(t => t.category === categoryFilter);
       }
 
       // Group by time period
@@ -2483,6 +2506,7 @@
     }
 
     // Initialize trend chart on load
+    populateTrendCategoryDropdown();
     setTimeout(updateTrendChart, 100);
   </script>
 </body>
