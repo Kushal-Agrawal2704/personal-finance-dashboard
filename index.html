@@ -1990,17 +1990,17 @@
                 }
                 const chartRect = context.chart.canvas.getBoundingClientRect();
                 const chartCenterX = chartRect.left + chartRect.width / 2;
-                const chartCenterY = chartRect.top + chartRect.height / 2;
-                const tooltipX = chartRect.left + tooltipModel.caretX;
-                const isRightSide = tooltipX > chartCenterX;
+                const hoverX = chartRect.left + tooltipModel.caretX;
+                const hoverY = chartRect.top + tooltipModel.caretY;
+                const isRightSide = hoverX > chartCenterX;
                 tooltipEl.className = isRightSide ? 'chart-tooltip right' : 'chart-tooltip left';
-                tooltipEl.querySelector('.tooltip-arrow').style.top = '50%';
+                // Position close to hover point, offset to left or right
                 if (isRightSide) {
-                  tooltipEl.style.left = (chartRect.right + 15) + 'px';
+                  tooltipEl.style.left = (hoverX + 15) + 'px';
                 } else {
-                  tooltipEl.style.left = (chartRect.left - tooltipEl.offsetWidth - 15) + 'px';
+                  tooltipEl.style.left = (hoverX - tooltipEl.offsetWidth - 15) + 'px';
                 }
-                tooltipEl.style.top = (chartRect.top + tooltipModel.caretY - tooltipEl.offsetHeight / 2) + 'px';
+                tooltipEl.style.top = (hoverY - tooltipEl.offsetHeight / 2) + 'px';
                 tooltipEl.style.opacity = 1;
               }
             },
