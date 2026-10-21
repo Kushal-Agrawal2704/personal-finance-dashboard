@@ -2443,6 +2443,9 @@
       const ctx = document.getElementById('trendChart').getContext('2d');
       if (trendChart) trendChart.destroy();
 
+      // Create average line data (same value for all points)
+      const avgLine = data.map(() => avg);
+
       trendChart = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -2464,6 +2467,17 @@
             tension: 0.3,
             pointRadius: 3,
             pointBackgroundColor: 'rgba(239, 71, 111, 1)',
+          }, {
+            label: `Average (${formatCurrency(avg)})`,
+            data: avgLine,
+            type: 'line',
+            borderColor: 'rgba(255, 193, 7, 1)',
+            backgroundColor: 'transparent',
+            borderWidth: 2,
+            borderDash: [8, 4],
+            pointRadius: 0,
+            tension: 0,
+            order: 0,
           }]
         },
         options: {
