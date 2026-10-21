@@ -939,6 +939,81 @@
     .upcoming-item .info .due { font-size: 0.7rem; color: var(--text-secondary); }
     .upcoming-item .amount { font-weight: 600; color: var(--accent-cyan); }
 
+    /* Expense Trend Section */
+    .trend-section {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+      border: 1px solid var(--border-color);
+    }
+
+    .trend-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .trend-header h3 {
+      font-size: 1.1rem;
+      color: var(--accent-green);
+    }
+
+    .trend-filters {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .trend-filters select {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    .trend-filters select:hover {
+      border-color: var(--accent-blue);
+    }
+
+    .trend-chart-container {
+      height: 350px;
+      margin-bottom: 1rem;
+    }
+
+    .trend-summary {
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .trend-stat {
+      text-align: center;
+    }
+
+    .trend-stat .stat-label {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .trend-stat .stat-value {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--accent-cyan);
+    }
+
+    .trend-stat .stat-value.up { color: var(--accent-red); }
+    .trend-stat .stat-value.down { color: var(--accent-green); }
+
     /* View Transactions Button */
     .view-txn-btn {
       background: var(--bg-secondary);
@@ -1214,6 +1289,46 @@
         font-size: 0.85rem;
         padding: 0.65rem 1rem;
       }
+
+      .trend-section {
+        padding: 1rem;
+      }
+
+      .trend-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .trend-header h3 {
+        font-size: 1rem;
+      }
+
+      .trend-filters {
+        width: 100%;
+      }
+
+      .trend-filters select {
+        flex: 1;
+        font-size: 0.8rem;
+        padding: 0.45rem 0.5rem;
+      }
+
+      .trend-chart-container {
+        height: 280px;
+      }
+
+      .trend-summary {
+        gap: 1rem;
+        justify-content: space-between;
+      }
+
+      .trend-stat .stat-label {
+        font-size: 0.65rem;
+      }
+
+      .trend-stat .stat-value {
+        font-size: 1rem;
+      }
     }
 
     /* Extra small screens */
@@ -1399,6 +1514,28 @@
   <div class="upcoming-section">
     <h3>⏰ Upcoming Payments (Next 30 Days)</h3>
     <div class="upcoming-list" id="upcomingList"></div>
+  </div>
+
+  <!-- Expense Trend Section -->
+  <div class="trend-section">
+    <div class="trend-header">
+      <h3>📈 Expense Trend Analysis</h3>
+      <div class="trend-filters">
+        <select id="trendViewType" onchange="updateTrendChart()">
+          <option value="monthly">Monthly View</option>
+          <option value="yearly">Yearly View</option>
+        </select>
+        <select id="trendCategory" onchange="updateTrendChart()">
+          <option value="all">All Categories</option>
+          <option value="fixed">Fixed Commitments Only</option>
+          <option value="other">Other Expenses Only</option>
+        </select>
+      </div>
+    </div>
+    <div class="trend-chart-container">
+      <canvas id="trendChart"></canvas>
+    </div>
+    <div class="trend-summary" id="trendSummary"></div>
   </div>
 
   <script>
@@ -2199,6 +2336,148 @@
         </div>
       `).join('');
     }
+
+    // Trend Chart
+    let trendChart = null;
+
+    function updateTrendChart() {
+      const viewType = document.getElementById('trendViewType').value;
+      const categoryFilter = document.getElementById('trendCategory').value;
+
+      // Get all expense transactions
+      let expenseData = transactions.filter(t => t.type === 'Exp.');
+
+      // Apply category filter
+      if (categoryFilter === 'fixed') {
+        expenseData = expenseData.filter(t => t.isFixed);
+      } else if (categoryFilter === 'other') {
+        expenseData = expenseData.filter(t => !t.isFixed);
+      }
+
+      // Group by time period
+      const grouped = {};
+      expenseData.forEach(t => {
+        let key;
+        if (viewType === 'monthly') {
+          key = t.date.toISOString().slice(0, 7); // YYYY-MM
+        } else {
+          key = t.date.getFullYear().toString(); // YYYY
+        }
+        if (!grouped[key]) grouped[key] = 0;
+        grouped[key] += t.amount;
+      });
+
+      // Sort by date
+      const sortedKeys = Object.keys(grouped).sort();
+      const labels = sortedKeys.map(k => {
+        if (viewType === 'monthly') {
+          const [year, month] = k.split('-');
+          return new Date(year, month - 1).toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
+        }
+        return k;
+      });
+      const data = sortedKeys.map(k => grouped[k]);
+
+      // Calculate stats
+      const total = data.reduce((s, v) => s + v, 0);
+      const avg = data.length ? total / data.length : 0;
+      const max = Math.max(...data, 0);
+      const min = data.length ? Math.min(...data) : 0;
+      const lastTwo = data.slice(-2);
+      const change = lastTwo.length === 2 ? ((lastTwo[1] - lastTwo[0]) / lastTwo[0] * 100) : 0;
+
+      // Update summary
+      document.getElementById('trendSummary').innerHTML = `
+        <div class="trend-stat">
+          <div class="stat-label">Total</div>
+          <div class="stat-value">${formatCurrency(total)}</div>
+        </div>
+        <div class="trend-stat">
+          <div class="stat-label">Average/${viewType === 'monthly' ? 'Month' : 'Year'}</div>
+          <div class="stat-value">${formatCurrency(avg)}</div>
+        </div>
+        <div class="trend-stat">
+          <div class="stat-label">Highest</div>
+          <div class="stat-value up">${formatCurrency(max)}</div>
+        </div>
+        <div class="trend-stat">
+          <div class="stat-label">Lowest</div>
+          <div class="stat-value down">${formatCurrency(min)}</div>
+        </div>
+        <div class="trend-stat">
+          <div class="stat-label">Last Change</div>
+          <div class="stat-value ${change > 0 ? 'up' : 'down'}">${change > 0 ? '+' : ''}${change.toFixed(1)}%</div>
+        </div>
+      `;
+
+      // Render chart
+      const ctx = document.getElementById('trendChart').getContext('2d');
+      if (trendChart) trendChart.destroy();
+
+      trendChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Expenses',
+            data: data,
+            backgroundColor: 'rgba(0, 180, 216, 0.6)',
+            borderColor: 'rgba(0, 180, 216, 1)',
+            borderWidth: 1,
+            borderRadius: 4,
+          }, {
+            label: 'Trend',
+            data: data,
+            type: 'line',
+            borderColor: 'rgba(239, 71, 111, 1)',
+            backgroundColor: 'transparent',
+            borderWidth: 2,
+            tension: 0.3,
+            pointRadius: 3,
+            pointBackgroundColor: 'rgba(239, 71, 111, 1)',
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            intersect: false,
+            mode: 'index'
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: { color: 'rgba(255,255,255,0.1)' },
+              ticks: {
+                color: '#8b8fa3',
+                callback: v => '₹' + (v >= 100000 ? (v/100000).toFixed(1) + 'L' : (v >= 1000 ? (v/1000).toFixed(0) + 'K' : v))
+              }
+            },
+            x: {
+              grid: { display: false },
+              ticks: { color: '#8b8fa3', maxRotation: 45 }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(22, 33, 62, 0.95)',
+              titleColor: '#fff',
+              bodyColor: '#8b8fa3',
+              borderColor: 'rgba(255,255,255,0.1)',
+              borderWidth: 1,
+              padding: 12,
+              callbacks: {
+                label: ctx => ctx.dataset.label + ': ' + formatCurrency(ctx.raw)
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Initialize trend chart on load
+    setTimeout(updateTrendChart, 100);
   </script>
 </body>
 </html>
