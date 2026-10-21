@@ -2344,8 +2344,14 @@
       const viewType = document.getElementById('trendViewType').value;
       const categoryFilter = document.getElementById('trendCategory').value;
 
-      // Get all expense transactions
-      let expenseData = transactions.filter(t => t.type === 'Exp.');
+      // Get all expense transactions (exclude Feb 2024 - incomplete month)
+      let expenseData = transactions.filter(t => {
+        if (t.type !== 'Exp.') return false;
+        const year = t.date.getFullYear();
+        const month = t.date.getMonth(); // 0-indexed, so Feb = 1
+        if (year === 2024 && month === 1) return false; // Exclude Feb 2024
+        return true;
+      });
 
       // Apply category filter
       if (categoryFilter === 'fixed') {
