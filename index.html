@@ -981,6 +981,81 @@
       border-color: var(--accent-blue);
     }
 
+    /* Searchable Dropdown */
+    .searchable-dropdown {
+      position: relative;
+      min-width: 180px;
+    }
+
+    .searchable-dropdown input[type="text"] {
+      width: 100%;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 0.5rem 2rem 0.5rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      box-sizing: border-box;
+    }
+
+    .searchable-dropdown input[type="text"]:focus {
+      outline: none;
+      border-color: var(--accent-blue);
+    }
+
+    .searchable-dropdown .dropdown-arrow {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-secondary);
+      font-size: 0.7rem;
+      pointer-events: none;
+    }
+
+    .dropdown-options {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      max-height: 250px;
+      overflow-y: auto;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      margin-top: 4px;
+      z-index: 100;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .dropdown-options.show {
+      display: block;
+    }
+
+    .dropdown-option {
+      padding: 0.5rem 0.75rem;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: var(--text-primary);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .dropdown-option:last-child {
+      border-bottom: none;
+    }
+
+    .dropdown-option:hover,
+    .dropdown-option.selected {
+      background: var(--accent-blue);
+      color: white;
+    }
+
+    .dropdown-option.hidden {
+      display: none;
+    }
+
     .trend-chart-container {
       height: 350px;
       margin-bottom: 1rem;
@@ -1417,6 +1492,25 @@
         padding: 0.45rem 0.5rem;
       }
 
+      .searchable-dropdown {
+        flex: 1;
+        min-width: 120px;
+      }
+
+      .searchable-dropdown input[type="text"] {
+        font-size: 0.8rem;
+        padding: 0.45rem 1.5rem 0.45rem 0.5rem;
+      }
+
+      .dropdown-options {
+        max-height: 200px;
+      }
+
+      .dropdown-option {
+        font-size: 0.8rem;
+        padding: 0.45rem 0.5rem;
+      }
+
       .trend-chart-container {
         height: 280px;
         padding-right: 5px;
@@ -1676,10 +1770,12 @@
           <option value="fixed">Fixed Commitments Only</option>
           <option value="other">Other Expenses Only</option>
         </select>
-        <select id="trendCategory" onchange="updateTrendChart()">
-          <option value="all">All Expense Types</option>
-          <!-- Will be populated dynamically -->
-        </select>
+        <div class="searchable-dropdown" id="categoryDropdown">
+          <input type="text" id="trendCategorySearch" placeholder="All Expense Types" onclick="toggleCategoryDropdown()" onkeyup="filterCategoryOptions()" autocomplete="off">
+          <span class="dropdown-arrow">▼</span>
+          <div class="dropdown-options" id="categoryOptions"></div>
+          <input type="hidden" id="trendCategory" value="all">
+        </div>
       </div>
     </div>
     <div class="trend-chart-container" id="trendChartWrapper">
@@ -2512,18 +2608,61 @@
     let trendChart = null;
     let trendPeriodKeys = []; // Store period keys for drilldown
 
-    function populateTrendCategoryDropdown() {
-      const select = document.getElementById('trendCategory');
-      const categories = [...new Set(transactions.filter(t => t.type === 'Exp.').map(t => t.category))].sort();
+        let allCategories = [];
 
-      select.innerHTML = '<option value="all">All Expense Types</option>';
-      categories.forEach(cat => {
-        const opt = document.createElement('option');
-        opt.value = cat;
-        opt.textContent = cat;
-        select.appendChild(opt);
+    function populateTrendCategoryDropdown() {
+      const optionsContainer = document.getElementById('categoryOptions');
+      allCategories = [...new Set(transactions.filter(t => t.type === 'Exp.').map(t => t.category))].sort();
+
+      let html = '<div class="dropdown-option" data-value="all" onclick="selectCategory(\'all\', \'All Expense Types\')">All Expense Types</div>';
+      allCategories.forEach(cat => {
+        html += `<div class="dropdown-option" data-value="${cat}" onclick="selectCategory('${cat.replace(/'/g, "\\'")}', '${cat.replace(/'/g, "\\'")}')">${cat}</div>`;
       });
+      optionsContainer.innerHTML = html;
     }
+
+    function toggleCategoryDropdown() {
+      const options = document.getElementById('categoryOptions');
+      options.classList.toggle('show');
+    }
+
+    function selectCategory(value, label) {
+      document.getElementById('trendCategory').value = value;
+      document.getElementById('trendCategorySearch').value = value === 'all' ? '' : label;
+      document.getElementById('trendCategorySearch').placeholder = value === 'all' ? 'All Expense Types' : label;
+      document.getElementById('categoryOptions').classList.remove('show');
+
+      // Reset filter
+      const allOptions = document.querySelectorAll('#categoryOptions .dropdown-option');
+      allOptions.forEach(opt => opt.classList.remove('hidden'));
+
+      updateTrendChart();
+    }
+
+    function filterCategoryOptions() {
+      const searchTerm = document.getElementById('trendCategorySearch').value.toLowerCase();
+      const options = document.querySelectorAll('#categoryOptions .dropdown-option');
+
+      options.forEach(opt => {
+        const text = opt.textContent.toLowerCase();
+        if (text.includes(searchTerm)) {
+          opt.classList.remove('hidden');
+        } else {
+          opt.classList.add('hidden');
+        }
+      });
+
+      // Show dropdown when typing
+      document.getElementById('categoryOptions').classList.add('show');
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+      const dropdown = document.getElementById('categoryDropdown');
+      if (dropdown && !dropdown.contains(e.target)) {
+        document.getElementById('categoryOptions').classList.remove('show');
+      }
+    });
 
     function updateTrendChart() {
       const viewType = document.getElementById('trendViewType').value;
