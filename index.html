@@ -888,6 +888,285 @@
       border-color: var(--accent-blue);
       color: white;
     }
+
+    /* Mobile Responsive Styles */
+    @media (max-width: 768px) {
+      body {
+        padding: 0.75rem;
+      }
+
+      .dashboard-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+      }
+
+      .dashboard-header h1 {
+        font-size: 1.4rem;
+      }
+
+      .dashboard-header .user-info {
+        text-align: left;
+        font-size: 0.8rem;
+      }
+
+      .month-nav {
+        gap: 0.35rem;
+      }
+
+      .month-nav-btn {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.75rem;
+      }
+
+      .financial-overview {
+        padding: 1rem;
+      }
+
+      .financial-overview h2 {
+        font-size: 0.9rem;
+      }
+
+      .waterfall-row {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
+      .waterfall-label {
+        width: 100%;
+        font-size: 0.9rem;
+      }
+
+      .waterfall-bar-container {
+        width: 100%;
+        height: 32px;
+      }
+
+      .waterfall-info {
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .waterfall-value {
+        font-size: 1.1rem;
+      }
+
+      .waterfall-pct {
+        font-size: 0.85rem;
+      }
+
+      .summary-strip {
+        grid-template-columns: 1fr;
+        gap: 0.6rem;
+      }
+
+      .summary-card {
+        padding: 0.85rem;
+      }
+
+      .summary-card .label {
+        font-size: 0.8rem;
+      }
+
+      .summary-card .value {
+        font-size: 1.4rem;
+      }
+
+      .summary-card .sub {
+        font-size: 0.8rem;
+      }
+
+      .commitments-section,
+      .expenses-section {
+        padding: 1rem;
+      }
+
+      .commitments-header h3,
+      .expenses-header h3 {
+        font-size: 1rem;
+      }
+
+      .check-all-btn {
+        font-size: 0.7rem;
+        padding: 0.35rem 0.6rem;
+      }
+
+      .commitments-grid {
+        gap: 0.6rem;
+      }
+
+      .commitment-group {
+        min-width: 100%;
+        max-width: 100%;
+      }
+
+      .group-header {
+        padding: 0.6rem 0.75rem;
+      }
+
+      .group-name {
+        font-size: 0.85rem;
+      }
+
+      .group-total {
+        font-size: 0.95rem;
+      }
+
+      .group-item {
+        font-size: 0.85rem;
+      }
+
+      .item-name .quarterly-info,
+      .item-name .annual-info {
+        font-size: 0.7rem;
+        display: block;
+        margin-top: 2px;
+      }
+
+      .commitments-total,
+      .expenses-total {
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+      }
+
+      .commitments-total .label,
+      .expenses-total .label {
+        font-size: 0.9rem;
+      }
+
+      .commitments-total .value,
+      .expenses-total .value {
+        font-size: 1.3rem;
+      }
+
+      .expenses-grid {
+        max-height: none;
+        gap: 0.5rem;
+      }
+
+      .expense-card {
+        width: calc(33.33% - 0.35rem);
+        height: 80px;
+        padding: 0.4rem;
+      }
+
+      .expense-card .name {
+        font-size: 0.65rem;
+      }
+
+      .expense-card .amount {
+        font-size: 0.8rem;
+      }
+
+      .expense-card .count {
+        font-size: 0.6rem;
+      }
+
+      .category-section {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+      }
+
+      .category-chart-card,
+      .category-list-card {
+        padding: 1rem;
+      }
+
+      .category-chart-card h3,
+      .category-list-card h3 {
+        font-size: 1rem;
+      }
+
+      .chart-container {
+        height: 250px;
+      }
+
+      .chart-center .total-label {
+        font-size: 0.75rem;
+      }
+
+      .chart-center .total-value {
+        font-size: 1.2rem;
+      }
+
+      .chart-center .total-count {
+        font-size: 0.7rem;
+      }
+
+      .category-list {
+        max-height: none;
+      }
+
+      .category-item {
+        padding: 0.65rem 0.85rem;
+      }
+
+      .category-item .name {
+        font-size: 0.9rem;
+      }
+
+      .category-item .amount {
+        font-size: 0.9rem;
+      }
+
+      .category-item .count,
+      .category-item .pct {
+        font-size: 0.75rem;
+      }
+
+      .upcoming-section {
+        padding: 1rem;
+      }
+
+      .upcoming-section h3 {
+        font-size: 1rem;
+      }
+
+      .upcoming-item {
+        padding: 0.6rem 0;
+      }
+
+      .upcoming-item .name {
+        font-size: 0.9rem;
+      }
+
+      .upcoming-item .due {
+        font-size: 0.75rem;
+      }
+
+      .upcoming-item .amount {
+        font-size: 0.95rem;
+      }
+
+      .view-txn-btn {
+        font-size: 0.85rem;
+        padding: 0.65rem 1rem;
+      }
+    }
+
+    /* Extra small screens */
+    @media (max-width: 480px) {
+      .expense-card {
+        width: calc(50% - 0.3rem);
+        height: 75px;
+      }
+
+      .waterfall-value {
+        font-size: 1rem;
+      }
+
+      .summary-card .value {
+        font-size: 1.25rem;
+      }
+
+      .group-item {
+        flex-wrap: wrap;
+      }
+
+      .item-amount {
+        margin-left: auto;
+      }
+    }
   </style>
 </head>
 <body>
