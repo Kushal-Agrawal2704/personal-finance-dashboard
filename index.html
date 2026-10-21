@@ -1449,7 +1449,7 @@
       // Health Insurance
       '⭐️ Star health Shruti', '⭐️ star health kushal', '⭐️ star health family',
       // Family expenses
-      '💰 Shruti monthly kharch', '💰Maa monthly kharch',
+      '💰 Shruti monthly kharch', '💰Maa monthly kharch', '🥻To Balaji',
       // Utilities
       '🔌 electricity bill', '🔥 gas bill', '📡 Wifi recharge', '📱 mobile recharge',
       // Social
@@ -1755,6 +1755,7 @@
 
     // Expense categories state
     let expenseCategories = [];
+    let expenseSelectionState = {}; // Persist selection state across renders
 
     function renderExpensesBreakdown() {
       // Get non-fixed expenses
@@ -1764,14 +1765,18 @@
       const categoryTotals = {};
       expenses.forEach(t => {
         const cat = t.category || 'Other';
-        if (!categoryTotals[cat]) categoryTotals[cat] = { total: 0, count: 0, selected: true };
+        if (!categoryTotals[cat]) categoryTotals[cat] = { total: 0, count: 0 };
         categoryTotals[cat].total += t.amount;
         categoryTotals[cat].count++;
       });
 
-      // Convert to array and sort by total
+      // Convert to array and sort by total, preserve selection state
       expenseCategories = Object.entries(categoryTotals)
-        .map(([name, data]) => ({ name, ...data }))
+        .map(([name, data]) => ({
+          name,
+          ...data,
+          selected: expenseSelectionState[name] !== false // default true, unless explicitly false
+        }))
         .sort((a, b) => b.total - a.total);
 
       // Render cards
@@ -1789,16 +1794,35 @@
     }
 
     function toggleExpenseCategory(index) {
-      expenseCategories[index].selected = !expenseCategories[index].selected;
-      renderExpensesBreakdown();
+      const cat = expenseCategories[index];
+      cat.selected = !cat.selected;
+      expenseSelectionState[cat.name] = cat.selected; // Persist state
+      renderExpenseCards(); // Only re-render cards, not rebuild data
+      updateExpensesTotal();
       updateFinancialOverview(getMonthsInRange());
+    }
+
+    function renderExpenseCards() {
+      const grid = document.getElementById('expensesGrid');
+      grid.innerHTML = expenseCategories.map((c, i) => `
+        <div class="expense-card ${c.selected ? 'selected' : ''}" onclick="toggleExpenseCategory(${i})">
+          <div class="checkbox">${c.selected ? '✓' : ''}</div>
+          <div class="name" title="${c.name}">${c.name.slice(0, 14)}</div>
+          <div class="amount">${formatCurrency(c.total)}</div>
+          <div class="count">${c.count} txns</div>
+        </div>
+      `).join('');
     }
 
     function toggleAllExpenses() {
       const allSelected = expenseCategories.every(c => c.selected);
-      expenseCategories.forEach(c => c.selected = !allSelected);
+      expenseCategories.forEach(c => {
+        c.selected = !allSelected;
+        expenseSelectionState[c.name] = c.selected;
+      });
       document.getElementById('checkAllExpensesBtn').textContent = allSelected ? '✓ Check All' : '✗ Uncheck All';
-      renderExpensesBreakdown();
+      renderExpenseCards();
+      updateExpensesTotal();
       updateFinancialOverview(getMonthsInRange());
     }
 
