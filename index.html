@@ -1014,6 +1014,109 @@
     .trend-stat .stat-value.up { color: var(--accent-red); }
     .trend-stat .stat-value.down { color: var(--accent-green); }
 
+    .trend-hint {
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-top: 1rem;
+      opacity: 0.7;
+    }
+
+    /* Drilldown Styles */
+    .trend-drilldown {
+      margin-top: 1.5rem;
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      padding: 1.5rem;
+      border: 1px solid var(--border-color);
+    }
+
+    .drilldown-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .back-btn {
+      background: var(--accent-cyan);
+      color: var(--bg-primary);
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .back-btn:hover {
+      background: var(--accent-green);
+      transform: translateX(-2px);
+    }
+
+    .drilldown-header h4 {
+      margin: 0;
+      font-size: 1.1rem;
+      color: var(--text-primary);
+    }
+
+    .drilldown-table-container {
+      max-height: 400px;
+      overflow-y: auto;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+
+    .drilldown-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    .drilldown-table thead {
+      position: sticky;
+      top: 0;
+      background: var(--bg-tertiary);
+      z-index: 1;
+    }
+
+    .drilldown-table th {
+      padding: 0.75rem;
+      text-align: left;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .drilldown-table td {
+      padding: 0.65rem 0.75rem;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-primary);
+    }
+
+    .drilldown-table tr:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .drilldown-table .amount-cell {
+      font-weight: 600;
+      color: var(--accent-red);
+      text-align: right;
+    }
+
+    .drilldown-total {
+      margin-top: 1rem;
+      text-align: right;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--accent-cyan);
+    }
+
     /* View Transactions Button */
     .view-txn-btn {
       background: var(--bg-secondary);
@@ -1329,6 +1432,37 @@
       .trend-stat .stat-value {
         font-size: 1rem;
       }
+
+      .trend-hint {
+        font-size: 0.7rem;
+      }
+
+      .trend-drilldown {
+        padding: 1rem;
+      }
+
+      .drilldown-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+      }
+
+      .drilldown-header h4 {
+        font-size: 0.95rem;
+      }
+
+      .drilldown-table {
+        font-size: 0.75rem;
+      }
+
+      .drilldown-table th,
+      .drilldown-table td {
+        padding: 0.5rem;
+      }
+
+      .drilldown-table-container {
+        max-height: 300px;
+      }
     }
 
     /* Extra small screens */
@@ -1536,10 +1670,31 @@
         </select>
       </div>
     </div>
-    <div class="trend-chart-container">
+    <div class="trend-chart-container" id="trendChartWrapper">
       <canvas id="trendChart"></canvas>
     </div>
     <div class="trend-summary" id="trendSummary"></div>
+    <div class="trend-drilldown" id="trendDrilldown" style="display: none;">
+      <div class="drilldown-header">
+        <button class="back-btn" onclick="closeDrilldown()">← Back to Trend</button>
+        <h4 id="drilldownTitle">Transactions</h4>
+      </div>
+      <div class="drilldown-table-container">
+        <table class="drilldown-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Category</th>
+              <th>Note</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody id="drilldownTableBody"></tbody>
+        </table>
+      </div>
+      <div class="drilldown-total" id="drilldownTotal"></div>
+    </div>
+    <p class="trend-hint" id="trendHint">💡 Double-click on any bar to view transactions</p>
   </div>
 
   <script>
@@ -2343,6 +2498,7 @@
 
     // Trend Chart
     let trendChart = null;
+    let trendPeriodKeys = []; // Store period keys for drilldown
 
     function populateTrendCategoryDropdown() {
       const select = document.getElementById('trendCategory');
@@ -2398,6 +2554,7 @@
 
       // Sort by date
       const sortedKeys = Object.keys(grouped).sort();
+      trendPeriodKeys = sortedKeys; // Store for drilldown
       const labels = sortedKeys.map(k => {
         if (viewType === 'monthly') {
           const [year, month] = k.split('-');
@@ -2519,9 +2676,92 @@
       });
     }
 
+    // Drilldown functions
+    function showDrilldown(periodKey, periodLabel) {
+      const viewType = document.getElementById('trendViewType').value;
+      const categoryTypeFilter = document.getElementById('trendCategoryType').value;
+      const categoryFilter = document.getElementById('trendCategory').value;
+
+      // Get filtered transactions for this period
+      let filteredTxns = transactions.filter(t => {
+        if (t.type !== 'Exp.') return false;
+        const year = t.date.getFullYear();
+        const month = t.date.getMonth();
+        if (year === 2024 && month === 1) return false; // Exclude Feb 2024
+
+        // Match period
+        let txnKey;
+        if (viewType === 'monthly') {
+          txnKey = t.date.toISOString().slice(0, 7);
+        } else {
+          txnKey = t.date.getFullYear().toString();
+        }
+        if (txnKey !== periodKey) return false;
+
+        // Apply category type filter
+        if (categoryTypeFilter === 'fixed' && !t.isFixed) return false;
+        if (categoryTypeFilter === 'other' && t.isFixed) return false;
+
+        // Apply specific category filter
+        if (categoryFilter !== 'all' && t.category !== categoryFilter) return false;
+
+        return true;
+      });
+
+      // Sort by date descending
+      filteredTxns.sort((a, b) => b.date - a.date);
+
+      // Build table rows
+      const tbody = document.getElementById('drilldownTableBody');
+      tbody.innerHTML = filteredTxns.map(t => `
+        <tr>
+          <td>${t.date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+          <td>${t.category}</td>
+          <td>${t.note || '-'}</td>
+          <td class="amount-cell">${formatCurrency(t.amount)}</td>
+        </tr>
+      `).join('');
+
+      // Update title and total
+      const total = filteredTxns.reduce((s, t) => s + t.amount, 0);
+      document.getElementById('drilldownTitle').textContent = `Transactions for ${periodLabel} (${filteredTxns.length} items)`;
+      document.getElementById('drilldownTotal').textContent = `Total: ${formatCurrency(total)}`;
+
+      // Show drilldown, hide chart
+      document.getElementById('trendChartWrapper').style.display = 'none';
+      document.getElementById('trendSummary').style.display = 'none';
+      document.getElementById('trendHint').style.display = 'none';
+      document.getElementById('trendDrilldown').style.display = 'block';
+    }
+
+    function closeDrilldown() {
+      document.getElementById('trendDrilldown').style.display = 'none';
+      document.getElementById('trendChartWrapper').style.display = 'block';
+      document.getElementById('trendSummary').style.display = 'flex';
+      document.getElementById('trendHint').style.display = 'block';
+    }
+
+    // Add double-click handler to trend chart
+    function setupTrendChartDblClick() {
+      const canvas = document.getElementById('trendChart');
+      canvas.ondblclick = function(evt) {
+        if (!trendChart) return;
+        const points = trendChart.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, false);
+        if (points.length > 0) {
+          const idx = points[0].index;
+          const periodKey = trendPeriodKeys[idx];
+          const periodLabel = trendChart.data.labels[idx];
+          showDrilldown(periodKey, periodLabel);
+        }
+      };
+    }
+
     // Initialize trend chart on load
     populateTrendCategoryDropdown();
-    setTimeout(updateTrendChart, 100);
+    setTimeout(() => {
+      updateTrendChart();
+      setupTrendChartDblClick();
+    }, 100);
   </script>
 </body>
 </html>
