@@ -588,11 +588,54 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 1rem;
+      flex-wrap: wrap;
+      gap: 0.75rem;
     }
 
     .expenses-header h3 {
       font-size: 1.1rem;
       color: var(--accent-red);
+    }
+
+    .expenses-filter {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--bg-secondary);
+      padding: 0.4rem 0.6rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+
+    .exp-nav-arrow {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 0.8rem;
+      padding: 0.25rem;
+      transition: color 0.2s;
+    }
+
+    .exp-nav-arrow:hover {
+      color: var(--accent-cyan);
+    }
+
+    .exp-month-label {
+      font-size: 0.8rem;
+      color: var(--text-primary);
+      min-width: 100px;
+      text-align: center;
+    }
+
+    .expenses-filter select {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 0.3rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      cursor: pointer;
     }
 
     .expenses-grid {
@@ -1460,6 +1503,25 @@
         font-size: 1rem;
       }
 
+      .expenses-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .expenses-filter {
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .exp-month-label {
+        font-size: 0.75rem;
+        min-width: 80px;
+      }
+
+      .expenses-filter select {
+        font-size: 0.7rem;
+      }
+
       .check-all-btn {
         font-size: 0.7rem;
         padding: 0.35rem 0.6rem;
@@ -1969,6 +2031,19 @@
   <div class="expenses-section">
     <div class="expenses-header">
       <h3>🛒 Other Expenses (Excl. Fixed Commitments)</h3>
+      <div class="expenses-filter">
+        <button class="exp-nav-arrow" onclick="navigateExpenseMonth(-1)">◀</button>
+        <span class="exp-month-label" id="expenseMonthLabel">October 2026</span>
+        <button class="exp-nav-arrow" onclick="navigateExpenseMonth(1)">▶</button>
+        <select id="expenseRangeFilter" onchange="changeExpenseRange()">
+          <option value="thisMonth" selected>This Month</option>
+          <option value="lastMonth">Last Month</option>
+          <option value="last3">Last 3 Months</option>
+          <option value="last6">Last 6 Months</option>
+          <option value="thisYear">FY 26-27</option>
+          <option value="all">All Time</option>
+        </select>
+      </div>
       <button class="check-all-btn" id="checkAllExpensesBtn" onclick="toggleAllExpenses()">✓ Check All</button>
     </div>
     <div class="expenses-grid" id="expensesGrid"></div>
@@ -2178,6 +2253,7 @@
       // Refresh all views
       populateAccountFilter();
       populateTrendCategoryDropdown();
+      updateExpenseFilterLabel();
       applyDateRange();
       renderIncomeItems();
       renderCommitments();
@@ -2466,6 +2542,7 @@
         updateDataInfo();
       }
       populateAccountFilter();
+      updateExpenseFilterLabel();
       applyDateRange();
       renderIncomeItems();
       renderCommitments();
@@ -2746,9 +2823,85 @@
     let expenseCategories = [];
     let expenseSelectionState = {}; // Persist selection state across renders
 
+    // Independent expense filter state
+    let expenseFilterRange = 'thisMonth';
+    let expenseFilterMonth = new Date(2026, 9, 1); // October 2026
+
+    function getExpenseFilterDateRange() {
+      const now = new Date(2026, 9, 21);
+      let start, end;
+
+      switch(expenseFilterRange) {
+        case 'thisMonth':
+          start = new Date(expenseFilterMonth.getFullYear(), expenseFilterMonth.getMonth(), 1);
+          end = new Date(expenseFilterMonth.getFullYear(), expenseFilterMonth.getMonth() + 1, 0);
+          break;
+        case 'lastMonth':
+          const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          start = lastMonth;
+          end = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0);
+          break;
+        case 'last3':
+          start = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+          end = now;
+          break;
+        case 'last6':
+          start = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+          end = now;
+          break;
+        case 'thisYear':
+          start = new Date(2026, 3, 1); // Apr 2026
+          end = new Date(2027, 2, 31); // Mar 2027
+          break;
+        case 'all':
+          start = new Date(2024, 0, 1);
+          end = now;
+          break;
+        default:
+          start = new Date(expenseFilterMonth.getFullYear(), expenseFilterMonth.getMonth(), 1);
+          end = new Date(expenseFilterMonth.getFullYear(), expenseFilterMonth.getMonth() + 1, 0);
+      }
+      return { start, end };
+    }
+
+    function navigateExpenseMonth(delta) {
+      expenseFilterMonth = new Date(expenseFilterMonth.getFullYear(), expenseFilterMonth.getMonth() + delta, 1);
+      expenseFilterRange = 'thisMonth';
+      document.getElementById('expenseRangeFilter').value = 'thisMonth';
+      updateExpenseFilterLabel();
+      renderExpensesBreakdown();
+    }
+
+    function changeExpenseRange() {
+      expenseFilterRange = document.getElementById('expenseRangeFilter').value;
+      updateExpenseFilterLabel();
+      renderExpensesBreakdown();
+    }
+
+    function updateExpenseFilterLabel() {
+      const { start, end } = getExpenseFilterDateRange();
+      const label = document.getElementById('expenseMonthLabel');
+
+      if (expenseFilterRange === 'thisMonth') {
+        label.textContent = expenseFilterMonth.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+      } else if (expenseFilterRange === 'lastMonth') {
+        const lastMonth = new Date(2026, 8, 1);
+        label.textContent = lastMonth.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+      } else {
+        label.textContent = start.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' }) + ' - ' +
+          end.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
+      }
+    }
+
     function renderExpensesBreakdown() {
+      // Get date range from independent expense filter
+      const { start, end } = getExpenseFilterDateRange();
+
+      // Filter transactions for expense block only
+      const expenseFilteredTxns = transactions.filter(t => t.date >= start && t.date <= end);
+
       // Get non-fixed expenses
-      const expenses = filteredTransactions.filter(t => t.type === 'Exp.' && !t.isFixed);
+      const expenses = expenseFilteredTxns.filter(t => t.type === 'Exp.' && !t.isFixed);
 
       // Group by category
       const categoryTotals = {};
