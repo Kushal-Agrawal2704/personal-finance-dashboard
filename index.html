@@ -3278,11 +3278,31 @@
 
     function populateTrendCategoryDropdown() {
       const optionsContainer = document.getElementById('categoryOptions');
-      allCategories = [...new Set(transactions.filter(t => t.type === 'Exp.').map(t => t.category))].sort();
+
+      // Get date 6 months ago
+      const now = new Date(2026, 9, 21);
+      const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+
+      // Filter expenses from last 6 months only
+      const recentExpenses = transactions.filter(t =>
+        t.type === 'Exp.' && t.date >= sixMonthsAgo
+      );
+
+      // Count transactions per category
+      const categoryCounts = {};
+      recentExpenses.forEach(t => {
+        const cat = t.category;
+        categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+      });
+
+      // Sort categories by transaction count (descending)
+      allCategories = Object.keys(categoryCounts)
+        .sort((a, b) => categoryCounts[b] - categoryCounts[a]);
 
       let html = '<div class="dropdown-option" data-value="all" onclick="selectCategory(\'all\', \'All Expense Types\')">All Expense Types</div>';
       allCategories.forEach(cat => {
-        html += `<div class="dropdown-option" data-value="${cat}" onclick="selectCategory('${cat.replace(/'/g, "\\'")}', '${cat.replace(/'/g, "\\'")}')">${cat}</div>`;
+        const count = categoryCounts[cat];
+        html += `<div class="dropdown-option" data-value="${cat}" onclick="selectCategory('${cat.replace(/'/g, "\\'")}', '${cat.replace(/'/g, "\\'")}')">${cat} <span style="color: var(--text-secondary); font-size: 0.75rem;">(${count})</span></div>`;
       });
       optionsContainer.innerHTML = html;
     }
