@@ -115,6 +115,110 @@
       flex: 1;
     }
 
+    .insights-section {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 1.25rem;
+      border: 1px solid var(--border-color);
+      min-width: 280px;
+      flex: 1;
+    }
+
+    .insights-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .insights-header h3 {
+      font-size: 1rem;
+      color: var(--text-secondary);
+      margin: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .insights-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+
+    .insights-toggle input {
+      cursor: pointer;
+      accent-color: var(--accent-cyan);
+    }
+
+    .insights-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      max-height: 180px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-color) transparent;
+    }
+
+    .insights-list::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .insights-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .insights-list::-webkit-scrollbar-thumb {
+      background: var(--border-color);
+      border-radius: 3px;
+    }
+
+    .insights-list::-webkit-scrollbar-thumb:hover {
+      background: var(--text-secondary);
+    }
+
+    .insights-list li {
+      font-size: 0.8rem;
+      color: var(--text-primary);
+      padding: 0.5rem 0.75rem;
+      background: var(--bg-secondary);
+      border-radius: 6px;
+      border-left: 3px solid var(--accent-cyan);
+      line-height: 1.4;
+    }
+
+    .insights-list li.warning {
+      border-left-color: var(--accent-red);
+    }
+
+    .insights-list li.success {
+      border-left-color: var(--accent-green);
+    }
+
+    .insights-list li.info {
+      border-left-color: var(--accent-blue);
+    }
+
+    .insight-category {
+      font-weight: 600;
+      color: var(--accent-cyan);
+    }
+
+    .insight-amount {
+      font-weight: 600;
+      color: var(--accent-red);
+    }
+
+    .insight-amount.positive {
+      color: var(--accent-green);
+    }
+
     .fixed-income-section {
       background: var(--bg-card);
       border-radius: 12px;
@@ -1387,6 +1491,14 @@
         max-width: unset;
       }
 
+      .insights-section {
+        min-width: unset;
+      }
+
+      .insights-list {
+        max-height: 150px;
+      }
+
       .upload-section {
         flex-direction: column;
         align-items: stretch;
@@ -1982,6 +2094,20 @@
       </div>
     </div>
 
+    <!-- Insights Block -->
+    <div class="insights-section">
+      <div class="insights-header">
+        <h3>💡 Smart Insights</h3>
+        <label class="insights-toggle">
+          <input type="checkbox" id="yearlyInsightsToggle" onchange="generateInsights()">
+          <span>Show Yearly</span>
+        </label>
+      </div>
+      <ul class="insights-list" id="insightsList">
+        <li>Loading insights...</li>
+      </ul>
+    </div>
+
     <!-- Fixed Income Block -->
     <div class="fixed-income-section">
       <div class="income-header">
@@ -2380,6 +2506,147 @@
       document.getElementById('incomeTotalValue').textContent = formatCurrency(total);
     }
 
+    function generateInsights() {
+      const isYearly = document.getElementById('yearlyInsightsToggle').checked;
+      const insights = [];
+      const { min, max } = getDataDateRange();
+
+      // Get current period data
+      let currentStart, currentEnd, prevStart, prevEnd, periodLabel;
+
+      if (isYearly) {
+        // Current financial year (Apr-Mar)
+        const now = max;
+        const fyStart = now.getMonth() >= 3 ? new Date(now.getFullYear(), 3, 1) : new Date(now.getFullYear() - 1, 3, 1);
+        const fyEnd = now.getMonth() >= 3 ? new Date(now.getFullYear() + 1, 2, 31) : new Date(now.getFullYear(), 2, 31);
+        currentStart = fyStart;
+        currentEnd = now;
+        prevStart = new Date(fyStart.getFullYear() - 1, 3, 1);
+        prevEnd = new Date(fyStart.getFullYear(), 2, 31);
+        periodLabel = 'this FY';
+      } else {
+        // Current month
+        currentStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+        currentEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+        prevStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
+        prevEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 0);
+        periodLabel = 'this month';
+      }
+
+      // Get transactions for periods
+      const currentTxns = transactions.filter(t => t.date >= currentStart && t.date <= currentEnd && t.type === 'Exp.' && !t.isFixed);
+      const prevTxns = transactions.filter(t => t.date >= prevStart && t.date <= prevEnd && t.type === 'Exp.' && !t.isFixed);
+
+      // Group by category
+      const currentByCategory = {};
+      const prevByCategory = {};
+
+      currentTxns.forEach(t => {
+        if (!currentByCategory[t.category]) currentByCategory[t.category] = { total: 0, count: 0 };
+        currentByCategory[t.category].total += t.amount;
+        currentByCategory[t.category].count++;
+      });
+
+      prevTxns.forEach(t => {
+        if (!prevByCategory[t.category]) prevByCategory[t.category] = { total: 0, count: 0 };
+        prevByCategory[t.category].total += t.amount;
+        prevByCategory[t.category].count++;
+      });
+
+      // Calculate total spending
+      const currentTotal = currentTxns.reduce((s, t) => s + t.amount, 0);
+      const prevTotal = prevTxns.reduce((s, t) => s + t.amount, 0);
+
+      // Insight 1: Total spending comparison
+      if (prevTotal > 0) {
+        const changePercent = ((currentTotal - prevTotal) / prevTotal * 100).toFixed(0);
+        if (currentTotal > prevTotal) {
+          insights.push({
+            text: `Spending is <span class="insight-amount">↑ ${changePercent}% higher</span> ${periodLabel} compared to last period`,
+            type: 'warning'
+          });
+        } else if (currentTotal < prevTotal) {
+          insights.push({
+            text: `Great! Spending is <span class="insight-amount positive">↓ ${Math.abs(changePercent)}% lower</span> ${periodLabel}`,
+            type: 'success'
+          });
+        }
+      }
+
+      // Insight 2: Top spending category
+      const sortedCategories = Object.entries(currentByCategory).sort((a, b) => b[1].total - a[1].total);
+      if (sortedCategories.length > 0) {
+        const [topCat, topData] = sortedCategories[0];
+        const topPercent = (topData.total / currentTotal * 100).toFixed(0);
+        insights.push({
+          text: `<span class="insight-category">${topCat}</span> is your biggest expense (${topPercent}% = <span class="insight-amount">${formatCurrency(topData.total)}</span>)`,
+          type: 'info'
+        });
+      }
+
+      // Insight 3: Categories with significant increase
+      for (const [cat, data] of Object.entries(currentByCategory)) {
+        const prevData = prevByCategory[cat];
+        if (prevData && prevData.total > 0) {
+          const increase = ((data.total - prevData.total) / prevData.total * 100);
+          if (increase > 50 && data.total > 500) {
+            insights.push({
+              text: `<span class="insight-category">${cat}</span> spending <span class="insight-amount">↑ ${increase.toFixed(0)}%</span> vs last period`,
+              type: 'warning'
+            });
+          }
+        }
+      }
+
+      // Insight 4: New categories this period
+      const newCategories = Object.keys(currentByCategory).filter(cat => !prevByCategory[cat]);
+      if (newCategories.length > 0 && newCategories.length <= 3) {
+        insights.push({
+          text: `New spending: <span class="insight-category">${newCategories.join(', ')}</span>`,
+          type: 'info'
+        });
+      }
+
+      // Insight 5: Categories where you saved
+      for (const [cat, prevData] of Object.entries(prevByCategory)) {
+        const currData = currentByCategory[cat];
+        if (prevData.total > 1000) {
+          if (!currData) {
+            insights.push({
+              text: `No spending on <span class="insight-category">${cat}</span> ${periodLabel} (was ${formatCurrency(prevData.total)})`,
+              type: 'success'
+            });
+          } else if (currData.total < prevData.total * 0.5) {
+            insights.push({
+              text: `Reduced <span class="insight-category">${cat}</span> by <span class="insight-amount positive">${((prevData.total - currData.total) / prevData.total * 100).toFixed(0)}%</span>`,
+              type: 'success'
+            });
+          }
+        }
+      }
+
+      // Insight 6: Frequent small expenses
+      const frequentSmall = sortedCategories.filter(([cat, data]) => data.count >= 10 && data.total / data.count < 200);
+      if (frequentSmall.length > 0) {
+        const [cat, data] = frequentSmall[0];
+        insights.push({
+          text: `<span class="insight-category">${cat}</span>: ${data.count} small purchases totaling <span class="insight-amount">${formatCurrency(data.total)}</span>`,
+          type: 'info'
+        });
+      }
+
+      // Limit to 5 insights
+      const finalInsights = insights.slice(0, 5);
+
+      // Render
+      const list = document.getElementById('insightsList');
+      if (finalInsights.length === 0) {
+        list.innerHTML = '<li class="info">Not enough data for insights yet</li>';
+      } else {
+        list.innerHTML = finalInsights.map(i => `<li class="${i.type}">${i.text}</li>`).join('');
+      }
+    }
+
     // Fixed commitments config with icons and selection state
     // Load saved amounts, group states, and item states from localStorage
     const savedAmounts = JSON.parse(localStorage.getItem('fixedCommitmentAmounts') || '{}');
@@ -2563,6 +2830,7 @@
       renderIncomeItems();
       renderCommitments();
       renderUpcoming();
+      generateInsights();
     });
 
     function populateAccountFilter() {
@@ -2661,6 +2929,7 @@
       renderExpensesBreakdown();
       updateFinancialOverview(monthsInRange);
       renderCategoryBreakdown();
+      generateInsights();
       selectedCategory = null;
       closeTransactionPanel();
     }
@@ -3509,12 +3778,8 @@
               anchor: 'end',
               align: 'top',
               color: '#8b8fa3',
-              font: { size: 10, weight: '500' },
-              formatter: (value) => {
-                if (value >= 100000) return '₹' + (value / 100000).toFixed(1) + 'L';
-                if (value >= 1000) return '₹' + (value / 1000).toFixed(0) + 'K';
-                return '₹' + value;
-              }
+              font: { size: 9, weight: '500' },
+              formatter: (value) => '₹' + Math.round(value).toLocaleString('en-IN')
             }
           }, {
             label: 'Trend',
