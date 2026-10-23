@@ -2535,12 +2535,28 @@
     let txnPage = 1;
     const txnPerPage = 20;
 
+    // Get min/max dates from data
+    function getDataDateRange() {
+      const dates = transactions.map(t => t.date).filter(d => !isNaN(d.getTime()));
+      if (dates.length === 0) return { min: new Date(2024, 0, 1), max: new Date() };
+      return {
+        min: new Date(Math.min(...dates)),
+        max: new Date(Math.max(...dates))
+      };
+    }
+
     // Initialize
     document.addEventListener('DOMContentLoaded', () => {
       // Try to load saved data first, otherwise use embedded data
       if (!loadSavedData()) {
         updateDataInfo();
       }
+
+      // Set current month to latest data month
+      const { max } = getDataDateRange();
+      currentMonth = new Date(max.getFullYear(), max.getMonth(), 1);
+      expenseFilterMonth = new Date(max.getFullYear(), max.getMonth(), 1);
+
       populateAccountFilter();
       updateExpenseFilterLabel();
       applyDateRange();
@@ -2561,7 +2577,15 @@
     }
 
     function navigateMonth(delta) {
-      currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + delta, 1);
+      const newMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + delta, 1);
+      const { min, max } = getDataDateRange();
+
+      // Don't navigate beyond data range
+      if (newMonth > max || newMonth < new Date(min.getFullYear(), min.getMonth(), 1)) {
+        return;
+      }
+
+      currentMonth = newMonth;
       currentRange = 'singleMonth';
       document.querySelectorAll('.month-nav-btn').forEach(b => b.classList.remove('active'));
       applyDateRange();
@@ -2865,7 +2889,15 @@
     }
 
     function navigateExpenseMonth(delta) {
-      expenseFilterMonth = new Date(expenseFilterMonth.getFullYear(), expenseFilterMonth.getMonth() + delta, 1);
+      const newMonth = new Date(expenseFilterMonth.getFullYear(), expenseFilterMonth.getMonth() + delta, 1);
+      const { min, max } = getDataDateRange();
+
+      // Don't navigate beyond data range
+      if (newMonth > max || newMonth < new Date(min.getFullYear(), min.getMonth(), 1)) {
+        return;
+      }
+
+      expenseFilterMonth = newMonth;
       expenseFilterRange = 'thisMonth';
       document.getElementById('expenseRangeFilter').value = 'thisMonth';
       updateExpenseFilterLabel();
